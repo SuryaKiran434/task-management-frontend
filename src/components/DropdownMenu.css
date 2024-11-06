@@ -1,0 +1,15 @@
+/* src/components/DropdownMenu.css */
+.dropdown-menu {
+  position: fixed;
+  top: 10px;
+  right: 70px; /* Adjusted to avoid overlap with ThemeSwitcher */
+  z-index: 1000;
+}
+
+.dropdown-menu button {
+  padding: 10px 20px;
+  background-color: #f00;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}

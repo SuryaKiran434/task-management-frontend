@@ -1,0 +1,53 @@
+/* src/components/ThemeSwitcher.css */
+.theme-switcher {
+  position: fixed; /* Changed from absolute to fixed */
+  top: 20px;
+  right: 20px;
+  cursor: pointer;
+  width: 50px; /* Standard size of the container */
+  height: 50px; /* Standard size of the container */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.4s; /* Optional: transition for scaling on hover */
+}
+
+/* Base styles for the icon */
+.theme-icon {
+  font-size: 24px; /* Standard size of the icon */
+  transition: opacity 0.4s ease, transform 0.4s ease; /* Smooth opacity and transform transition */
+}
+
+/* Bright Sun styles */
+.sun {
+  opacity: 1; /* Fully visible */
+  color: rgba(255, 255, 0, 1); /* Bright yellow color */
+  transition: color 0.4s; /* Smooth color transition */
+}
+
+/* Moon styles */
+.moon {
+  opacity: 1; /* Fully visible */
+  color: rgba(255, 255, 255, 1); /* White color for moon */
+  position: relative;
+}
+
+/* Animation for fading */
+.sun,
+.moon {
+  animation: fadeIn 0.4s forwards; /* Fade-in effect */
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0; /* Start fully transparent */
+  }
+  to {
+    opacity: 1; /* End fully opaque */
+  }
+}
+
+/* Optional: Hover effect */
+.theme-switcher:hover {
+  transform: scale(1.1); /* Slightly increase size on hover */
+}
