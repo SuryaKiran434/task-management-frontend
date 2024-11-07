@@ -1,70 +1,67 @@
-# Getting Started with Create React App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Task Management Tool
 
-## Available Scripts
+This Task Management Tool is a full-featured web application for managing tasks and user information, supporting role-based access control with secure JWT-based authentication. The application includes an admin dashboard, task management capabilities, and theming options.
 
-In the project directory, you can run:
+## Features
+- **Task Management**: Create, update, delete, and view tasks. Filter tasks by priority and status.
+- **User Management**: Register new users, view user profiles, and manage user information. Admins can assign roles and manage all users and tasks.
+- **Authentication**: JWT-based user authentication with refresh token support.
+- **Authorization**: Role-based access control to restrict certain pages and actions to specific roles (e.g., admin access).
+- **Responsive Design**: Styled with a dynamic theme for light and dark modes.
 
-### `npm start`
+## Project Structure
+The project follows a structured organization of files and directories:
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **components/**: Contains reusable components, including authentication forms, user information pages, and task management features.
+- **contexts/**: Provides React Contexts for global state management, including authentication, user data, task data, and theming.
+- **pages/**: Includes page-level components such as Home, Login, Admin Dashboard, and various task and user management screens.
+- **services/**: Contains services for API interactions, handling authentication, user data, and task data.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Key Components
 
-### `npm test`
+### Authentication
+- `AuthContext`: Manages user authentication state, login/logout functionality, and token refresh.
+- `authService.js`: Handles login, logout, token refresh, and token management with local storage.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### User Management
+- `UserContext`: Fetches and manages user data, updating roles, and deleting users.
+- `userService.js`: Provides functions to register new users, assign admin roles, fetch user info, and update user data.
 
-### `npm run build`
+### Task Management
+- `TaskContext`: Manages task data, fetching tasks for specific users or all tasks for admin, and task CRUD operations.
+- `taskService.js`: Provides API calls to fetch, create, update, and delete tasks.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Theming
+- `ThemeContext`: Provides light and dark themes, with local storage to remember user preferences.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Installation
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd task-management-tool
+   ```
 
-### `npm run eject`
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+3. Start the development server:
+   ```bash
+   npm start
+   ```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+The application runs on `http://localhost:3000` by default.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## API Documentation
+This application interacts with a backend API hosted at `http://localhost:8081/api`. The API follows RESTful principles, and includes endpoints for user registration, authentication, task management, and user management.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### Example Endpoints
+- **User Authentication**: `/authenticate`, `/refresh-token`
+- **User Management**: `/users`, `/users/:id`, `/users/:id/assign-admin`
+- **Task Management**: `/tasks`, `/tasks/:id`
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## License
+This project is licensed under the MIT License. See the LICENSE file for more details.
