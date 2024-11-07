@@ -28,6 +28,26 @@ html, body, #root {
   }
 }
 
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .all-tasks-container {
   width: 80%;
   max-width: 1200px;
@@ -36,12 +56,14 @@ html, body, #root {
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   text-align: center;
+  animation: slideIn 1s ease-out;
 }
 
 .tasks-table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 20px;
+  animation: fadeIn 1.5s ease-out;
 }
 
 .tasks-table th {
@@ -53,6 +75,7 @@ html, body, #root {
 
 .task-row:hover {
   background-color: var(--row-hover-background-color, #f1f1f1);
+  animation: fadeIn 0.5s ease-out;
 }
 
 /* Priority styles */
