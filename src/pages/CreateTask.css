@@ -29,6 +29,26 @@ html, body, #root {
   }
 }
 
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .create-task-container {
   width: 100%;
   max-width: 400px;
@@ -37,10 +57,12 @@ html, body, #root {
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   text-align: center;
+  animation: slideIn 1s ease-out;
 }
 
 .create-task-container h1 {
   margin-bottom: 20px;
+  animation: fadeIn 1.5s ease-out;
 }
 
 .create-task-container form {
@@ -60,6 +82,7 @@ html, body, #root {
   font-size: 1em;
   border: 1px solid #ccc;
   border-radius: 5px;
+  animation: fadeIn 1.5s ease-out;
 }
 
 .create-task-container button {
@@ -77,4 +100,5 @@ html, body, #root {
 .error-message {
   color: red;
   margin-bottom: 15px;
+  animation: fadeIn 1.5s ease-out;
 }

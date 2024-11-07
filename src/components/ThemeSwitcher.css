@@ -10,6 +10,8 @@
   align-items: center;
   justify-content: center;
   transition: transform 0.4s; /* Optional: transition for scaling on hover */
+  user-select: none; /* Prevent text selection */
+  outline: none; /* Remove the outline border */
 }
 
 /* Base styles for the icon */
