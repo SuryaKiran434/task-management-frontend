@@ -1,3 +1,4 @@
+// Login.js
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -56,6 +57,11 @@ function Login() {
           </div>
           <button type="submit" className="login-button">Login</button>
         </form>
+
+        {/* Forgot Password link */}
+        <div className="forgot-password">
+          <a href="/reset-password">Forgot Password?</a>
+        </div>
       </div>
     </div>
   );

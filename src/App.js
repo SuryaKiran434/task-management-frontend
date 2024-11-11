@@ -1,4 +1,4 @@
-import React from 'react';
+// App.js
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './components/auth/Login';
@@ -18,6 +18,7 @@ import ManageUserTasks from './components/ManageUserTasks';
 import ManageUser from './components/ManageUser';
 import ThemeSwitcher from './components/ThemeSwitcher';
 import DropdownMenu from './components/DropdownMenu';
+import ResetPassword from './components/auth/ResetPassword'; // Import ResetPassword component
 import { AuthProvider } from './contexts/AuthContext';
 import { TaskProvider } from './contexts/TaskContext';
 import { UserProvider } from './contexts/userContext';
@@ -44,10 +45,10 @@ function AppContent() {
         <Route path="/view-information/:userId?" element={<PrivateRoute component={UserInfo} />} />
         <Route path="/edit-user-info/:userId" element={<PrivateRoute component={EditUserInfo} />} />
         <Route path="/edit-user/:userId" element={<PrivateRoute component={EditUser} roles={['ADMIN']} />} />
-        <Route path="/edit-user/:userId" element={<PrivateRoute component={EditUser} roles={['ADMIN']} />} />
         <Route path="/edit-tasks/:taskId" element={<PrivateRoute component={EditTasks} />} />
         <Route path="/manage-user-tasks/:userId" element={<PrivateRoute component={ManageUserTasks} roles={['ADMIN']} />} />
         <Route path="/manage-user/:userId" element={<PrivateRoute component={ManageUser} roles={['ADMIN']} />} />
+        <Route path="/reset-password" element={<ResetPassword />} /> {/* Add route for reset password */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </div>
