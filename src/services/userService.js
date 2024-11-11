@@ -44,7 +44,18 @@ const userService = {
       console.error('Error updating user info:', error.response || error);
       throw new Error('Failed to update user information');
     }
-  }
-};
+  },
+
+  // Reset password using email and new password
+  resetPassword: async (email, newPassword) => {
+      try {
+        const response = await axiosInstance.post(`/users/reset-password?email=${encodeURIComponent(email)}&newPassword=${encodeURIComponent(newPassword)}`);
+        return response.data;
+      } catch (error) {
+        console.error('Error resetting password:', error);
+        throw new Error(error.response?.data || 'Error resetting password');
+      }
+    }
+  };
 
 export default userService;

@@ -1,5 +1,5 @@
 // src/contexts/TaskContext.js
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { taskService } from '../services/taskService';
 
 export const TaskContext = createContext();
@@ -10,7 +10,7 @@ export const TaskProvider = ({ children }) => {
   const [unsavedChanges, setUnsavedChanges] = useState(false);
 
   // General function to fetch tasks based on user role with retry logic
-  const fetchTasks = async (isAdmin = false, userId = null, retries = 3) => {
+  const fetchTasks = useCallback(async (isAdmin = false, userId = null, retries = 3) => {
     for (let i = 0; i < retries; i++) {
       try {
         console.log(`Fetching tasks (Attempt ${i + 1})...`);
@@ -29,15 +29,15 @@ export const TaskProvider = ({ children }) => {
         }
       }
     }
-  };
+  }, []);
 
   // Wrapper function to fetch tasks for a specific user
-  const fetchUserTasks = async (userId) => {
+  const fetchUserTasks = useCallback(async (userId) => {
     // Only fetch if tasks are not already loaded to prevent redundant calls
     if (tasks.length === 0) {
       await fetchTasks(false, userId);
     }
-  };
+  }, [fetchTasks, tasks.length]);
 
   const createTask = async (taskData) => {
     try {
