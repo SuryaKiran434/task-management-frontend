@@ -121,7 +121,7 @@ function AllTasks({ userId }) {
                 </select>
               ) : task.priority}</td>
               <td>{editingTask === task.id ? <input type="date" name="dueDate" value={taskData.dueDate.split('T')[0]} onChange={handleInputChange} /> : new Date(task.dueDate).toLocaleDateString()}</td>
-              <td>{editingTask === task.id ? (
+              <td className="manage-buttons">{editingTask === task.id ? (
                 <>
                   <button onClick={handleSaveClick}>Save</button>
                   <button onClick={handleDiscardClick}>Discard</button>

@@ -66,11 +66,15 @@ html, body, #root {
   animation: fadeIn 1.5s ease-out;
 }
 
+.tasks-table th,
+.tasks-table td {
+  text-align: left;
+  padding: 8px;
+}
+
 .tasks-table th {
   background-color: var(--table-header-background-color, #4caf50);
   color: var(--table-header-text-color, #fff);
-  text-align: left;
-  padding: 8px;
 }
 
 .task-row:hover {
