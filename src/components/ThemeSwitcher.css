@@ -1,17 +1,18 @@
 /* src/components/ThemeSwitcher.css */
 .theme-switcher {
-  position: fixed; /* Changed from absolute to fixed */
+  position: fixed;
   top: 20px;
   right: 20px;
+  z-index: 1300; /* above AppBar (theme.zIndex.drawer + 1 = 1201) */
   cursor: pointer;
-  width: 50px; /* Standard size of the container */
-  height: 50px; /* Standard size of the container */
+  width: 50px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.4s; /* Optional: transition for scaling on hover */
-  user-select: none; /* Prevent text selection */
-  outline: none; /* Remove the outline border */
+  transition: transform 0.4s;
+  user-select: none;
+  outline: none;
 }
 
 /* Base styles for the icon */

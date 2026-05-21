@@ -1,6 +1,7 @@
 // src/contexts/TaskContext.js
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { taskService } from '../services/taskService';
+import { useToast } from './ToastContext';
 
 export const TaskContext = createContext();
 
@@ -8,69 +9,89 @@ export const TaskProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
   const [error, setError] = useState('');
   const [unsavedChanges, setUnsavedChanges] = useState(false);
+  const toast = useToast();
 
-  // General function to fetch tasks based on user role with retry logic
   const fetchTasks = useCallback(async (isAdmin = false, userId = null, retries = 3) => {
     for (let i = 0; i < retries; i++) {
       try {
-        console.log(`Fetching tasks (Attempt ${i + 1})...`);
         const fetchedTasks = isAdmin
           ? await taskService.getAllTasks()
           : await taskService.getUserTasks(userId);
-
         setTasks(fetchedTasks);
         setError('');
-        console.log('Tasks fetched successfully.');
-        return; // Exit if fetch is successful
+        return;
       } catch (err) {
         if (i === retries - 1) {
           setError('Failed to load tasks.');
-          console.error('Max retries reached. Could not fetch tasks:', err);
+          toast.error('Failed to load tasks.');
         }
       }
     }
-  }, []);
+  }, [toast]);
 
-  // Wrapper function to fetch tasks for a specific user
   const fetchUserTasks = useCallback(async (userId) => {
-    // Only fetch if tasks are not already loaded to prevent redundant calls
-    if (tasks.length === 0) {
-      await fetchTasks(false, userId);
-    }
-  }, [fetchTasks, tasks.length]);
+    await fetchTasks(false, userId);
+  }, [fetchTasks]);
 
   const createTask = async (taskData) => {
     try {
       const newTask = await taskService.createTask(taskData);
-      setTasks([...tasks, newTask]);
+      setTasks((prev) => [...prev, newTask]);
       setUnsavedChanges(false);
+      return newTask;
     } catch (err) {
       setError('Failed to create task.');
-      console.error(err);
+      toast.error('Failed to create task.');
+      throw err;
     }
   };
 
   const updateTask = async (taskId, updatedData) => {
     try {
       const updatedTask = await taskService.updateTask(taskId, updatedData);
-      setTasks(tasks.map(task => (task.id === taskId ? updatedTask : task)));
+      setTasks((prev) => prev.map((task) => (task.id === taskId ? updatedTask : task)));
       setUnsavedChanges(false);
+      return updatedTask;
     } catch (err) {
       setError('Failed to update task.');
-      console.error(err);
+      toast.error('Failed to update task.');
+      throw err;
     }
   };
 
   const deleteTask = async (taskId) => {
     try {
       await taskService.deleteTask(taskId);
-      setTasks(tasks.filter(task => task.id !== taskId));
+      setTasks((prev) => prev.filter((task) => task.id !== taskId));
       setUnsavedChanges(false);
     } catch (err) {
       setError('Failed to delete task.');
-      console.error(err);
+      toast.error('Failed to delete task.');
+      throw err;
     }
   };
+
+  const filterTasks = useCallback(async (status, priority) => {
+    try {
+      const filtered = await taskService.filterTasks(status, priority);
+      setTasks(filtered);
+      setError('');
+    } catch (err) {
+      setError('Failed to filter tasks.');
+      toast.error('Failed to filter tasks.');
+    }
+  }, [toast]);
+
+  const searchTasks = useCallback(async (q) => {
+    try {
+      const results = await taskService.searchTasks(q);
+      setTasks(results);
+      setError('');
+    } catch (err) {
+      setError('Failed to search tasks.');
+      toast.error('Failed to search tasks.');
+    }
+  }, [toast]);
 
   useEffect(() => {
     const handleBeforeUnload = (event) => {
@@ -91,6 +112,8 @@ export const TaskProvider = ({ children }) => {
       createTask,
       updateTask,
       deleteTask,
+      filterTasks,
+      searchTasks,
       error,
       setUnsavedChanges,
     }}>

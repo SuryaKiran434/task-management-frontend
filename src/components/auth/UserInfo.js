@@ -1,8 +1,13 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Box, Card, CardContent, Typography, Avatar, Button, Stack,
+  Skeleton, Alert, Divider, Chip, Tooltip, IconButton,
+} from '@mui/material';
+import { Edit3, Camera } from 'lucide-react';
 import { AuthContext } from '../../contexts/AuthContext';
 import userService from '../../services/userService';
-import './UserInfo.css'; // Import the CSS file
+import axiosInstance from '../../utils/axiosInstance';
 
 const UserInfo = () => {
   const { userId } = useParams();
@@ -10,59 +15,133 @@ const UserInfo = () => {
   const navigate = useNavigate();
   const [userInfo, setUserInfo] = useState(null);
   const [error, setError] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const id = userId || currentUser?.id;
 
   useEffect(() => {
-    const id = userId || currentUser?.id;
-    console.log('useEffect called with id:', id);
-
     if (!userId && currentUser?.id) {
-      console.log('Navigating to /view-information/', currentUser.id);
       navigate(`/view-information/${currentUser.id}`, { replace: true });
     } else if (id) {
-      console.log('Fetching user data for id:', id);
-      fetchUserData(id);
+      userService.getUserInfo(id)
+        .then(setUserInfo)
+        .catch(() => setError('Failed to fetch user information'));
     } else {
-      console.log('User ID is not available');
-      setError('User ID is not available');
+      setError('User ID not available');
     }
-  }, [userId, currentUser, navigate]);
+  }, [userId, currentUser, navigate, id]);
 
-  const fetchUserData = async (id) => {
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('avatar', file);
     try {
-      console.log('Fetching user data for id:', id);
-      const response = await userService.getUserInfo(id);
-      console.log('User data fetched:', response);
-      setUserInfo(response);
-    } catch (error) {
-      console.error('Failed to fetch user information:', error);
-      setError('Failed to fetch user information');
+      const res = await axiosInstance.post('/users/me/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setUserInfo(prev => ({ ...prev, avatarUrl: res.data.avatarUrl }));
+    } catch {
+      setError('Avatar upload failed');
+    } finally {
+      setUploading(false);
     }
   };
 
+  const isOwnProfile = String(currentUser?.id) === String(id);
+
   return (
-    <div className="user-info-container">
-      {error && <div>{error}</div>}
-      {userInfo ? (
-        <div className="user-info">
-          <h1>User Information</h1>
-          <div className="user-info-field">
-            <label>First Name:</label>
-            <div className="user-info-value">{userInfo.firstName}</div>
-          </div>
-          <div className="user-info-field">
-            <label>Last Name:</label>
-            <div className="user-info-value">{userInfo.lastName}</div>
-          </div>
-          <div className="user-info-field">
-            <label>Email:</label>
-            <div className="user-info-value">{userInfo.email}</div>
-          </div>
-          <button onClick={() => navigate(`/edit-user-info/${userId}`)}>Edit</button>
-        </div>
-      ) : (
-        <p>Loading user information...</p>
-      )}
-    </div>
+    <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+      <Typography variant="h4" fontWeight={700} mb={4}>Profile</Typography>
+
+      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
+      <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+        <CardContent sx={{ p: 4 }}>
+          {!userInfo ? (
+            <Stack spacing={2}>
+              <Skeleton variant="circular" width={80} height={80} />
+              <Skeleton width="50%" height={28} />
+              <Skeleton width="70%" />
+              <Skeleton width="60%" />
+            </Stack>
+          ) : (
+            <>
+              {/* Avatar */}
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3, mb: 3 }}>
+                <Box sx={{ position: 'relative' }}>
+                  <Avatar
+                    src={userInfo.avatarUrl ? `${process.env.REACT_APP_API_BASE_URL?.replace('/api', '') || 'http://localhost:8081'}${userInfo.avatarUrl}` : undefined}
+                    sx={{ width: 80, height: 80, fontSize: '2rem', bgcolor: 'primary.main' }}
+                  >
+                    {userInfo.firstName?.[0] || userInfo.email?.[0] || 'U'}
+                  </Avatar>
+                  {isOwnProfile && (
+                    <>
+                      <Tooltip title="Change photo">
+                        <IconButton
+                          size="small"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploading}
+                          sx={{ position: 'absolute', bottom: -4, right: -4, backgroundColor: 'background.paper', border: '1px solid', borderColor: 'divider', width: 24, height: 24 }}
+                        >
+                          <Camera size={12} />
+                        </IconButton>
+                      </Tooltip>
+                      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
+                    </>
+                  )}
+                </Box>
+                <Box>
+                  <Typography variant="h5" fontWeight={700}>
+                    {userInfo.firstName} {userInfo.lastName}
+                  </Typography>
+                  <Typography color="text.secondary" variant="body2">{userInfo.email}</Typography>
+                  <Stack direction="row" spacing={1} mt={1}>
+                    {userInfo.roles?.map((r, i) => {
+                      const name = typeof r === 'string' ? r : (r.authority || r.name || String(r));
+                      return (
+                        <Chip key={i} label={name.replace('ROLE_', '')} size="small" color={name === 'ROLE_ADMIN' ? 'secondary' : 'default'} variant="outlined" />
+                      );
+                    })}
+                  </Stack>
+                </Box>
+              </Box>
+
+              <Divider sx={{ mb: 3 }} />
+
+              <Stack spacing={2}>
+                {[
+                  { label: 'First Name', value: userInfo.firstName },
+                  { label: 'Last Name', value: userInfo.lastName },
+                  { label: 'Email', value: userInfo.email },
+                ].map(({ label, value }) => (
+                  <Box key={label}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600} textTransform="uppercase" letterSpacing={0.5}>
+                      {label}
+                    </Typography>
+                    <Typography variant="body1">{value || '—'}</Typography>
+                  </Box>
+                ))}
+              </Stack>
+
+              {isOwnProfile && (
+                <Button
+                  startIcon={<Edit3 size={16} />}
+                  variant="outlined"
+                  sx={{ mt: 3, borderRadius: 2 }}
+                  onClick={() => navigate(`/edit-user-info/${id}`)}
+                >
+                  Edit Profile
+                </Button>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </Box>
   );
 };
 

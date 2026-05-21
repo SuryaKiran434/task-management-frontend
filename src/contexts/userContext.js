@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import userService from '../services/userService'; // Import user service
+import axiosInstance from '../utils/axiosInstance';
+import userService from '../services/userService';
 
 export const UserContext = createContext();
 
@@ -9,73 +10,45 @@ export const UserProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
 
-  // Fetch all users
   const fetchAllUsers = async () => {
     setLoading(true);
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setError('Authentication token missing.');
-      setLoading(false);
-      return;
-    }
-
     try {
-      const response = await fetch('http://localhost:8081/api/users', {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      setUsers(data);
+      const response = await axiosInstance.get('/users');
+      setUsers(response.data);
       setError(null);
-    } catch {
+    } catch (err) {
       setError('Failed to fetch users.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Update user information
   const updateUser = async (userId, updatedData) => {
     try {
-      const response = await fetch(`http://localhost:8081/api/users/${userId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(updatedData),
-      });
-      const updatedUser = await response.json();
-      setUsers(users.map(user => (user.id === userId ? updatedUser : user)));
+      const response = await axiosInstance.put(`/users/${userId}`, updatedData);
+      setUsers(users.map(user => (user.id === userId ? response.data : user)));
       setUnsavedChanges(false);
-    } catch {
+    } catch (err) {
       setError('Failed to update user.');
     }
   };
 
-  // Delete user by ID
   const deleteUser = async (userId) => {
     try {
-      await fetch(`http://localhost:8081/api/users/${userId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
+      await axiosInstance.delete(`/users/${userId}`);
       setUsers(users.filter(user => user.id !== userId));
-    } catch {
+    } catch (err) {
       setError('Failed to delete user.');
     }
   };
 
-  // Assign admin role to a user
   const assignAdmin = async (userId) => {
     try {
       await userService.assignAdmin(userId);
       setUsers(users.map(user =>
-        user.id === userId ? { ...user, roles: [...user.roles, 'ADMIN'] } : user
+        user.id === userId ? { ...user, roles: [...user.roles, 'ROLE_ADMIN'] } : user
       ));
-    } catch {
+    } catch (err) {
       setError('Failed to assign admin role.');
     }
   };

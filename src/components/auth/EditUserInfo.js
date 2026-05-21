@@ -1,95 +1,82 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Box, Card, CardContent, Typography, TextField, Button,
+  Stack, Alert, Snackbar, Divider,
+} from '@mui/material';
+import { ArrowLeft, Save } from 'lucide-react';
 import { AuthContext } from '../../contexts/AuthContext';
 import userService from '../../services/userService';
-import './UserInfo.css'; // Reuse the CSS file
 
 const EditUserInfo = () => {
   const { userId } = useParams();
   const { currentUser } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-  });
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '' });
   const [error, setError] = useState(null);
+  const [snack, setSnack] = useState(null);
+
+  const id = userId || currentUser?.id;
 
   useEffect(() => {
-    const id = userId || currentUser?.id;
     if (id) {
-      fetchUserData(id);
+      userService.getUserInfo(id)
+        .then(data => setForm({ firstName: data.firstName || '', lastName: data.lastName || '', email: data.email || '' }))
+        .catch(() => setError('Failed to fetch user information'));
     } else {
-      setError('User ID is not available');
+      setError('User ID not available');
     }
-  }, [userId, currentUser]);
+  }, [id]);
 
-  const fetchUserData = async (id) => {
-    try {
-      const response = await userService.getUserInfo(id);
-      setFormData({
-        firstName: response.firstName,
-        lastName: response.lastName,
-        email: response.email,
-      });
-    } catch (error) {
-      setError('Failed to fetch user information');
-    }
+  const handleChange = (e) => {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const handleFormSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await userService.updateUserInfo(userId, formData);
-      navigate(`/view-information/${userId}`);
-    } catch (error) {
-      setError('Failed to update user information');
+      await userService.updateUserInfo(userId, form);
+      setSnack({ message: 'Profile updated!', severity: 'success' });
+      setTimeout(() => navigate(`/view-information/${userId}`), 900);
+    } catch {
+      setError('Failed to update profile');
     }
   };
 
   return (
-    <div className="user-info-container">
-      {error && <div>{error}</div>}
-      <form onSubmit={handleFormSubmit}>
-        <div className="user-info-field">
-          <label>First Name:</label>
-          <input
-            type="text"
-            name="firstName"
-            value={formData.firstName}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-        <div className="user-info-field">
-          <label>Last Name:</label>
-          <input
-            type="text"
-            name="lastName"
-            value={formData.lastName}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-        <div className="user-info-field">
-          <label>Email:</label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-        <button type="submit">Save</button>
-        <button type="button" onClick={() => navigate(`/view-information/${userId}`)}>Cancel</button>
-      </form>
-    </div>
+    <Box sx={{ maxWidth: 520, mx: 'auto' }}>
+      <Button startIcon={<ArrowLeft size={16} />} onClick={() => navigate(-1)} sx={{ mb: 3, color: 'text.secondary' }}>
+        Back
+      </Button>
+
+      <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+        <CardContent sx={{ p: 4 }}>
+          <Typography variant="h5" fontWeight={700} mb={0.5}>Edit Profile</Typography>
+          <Typography variant="body2" color="text.secondary" mb={3}>Update your personal information</Typography>
+          <Divider sx={{ mb: 3 }} />
+
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+          <form onSubmit={handleSubmit}>
+            <Stack spacing={2.5}>
+              <Stack direction="row" spacing={2}>
+                <TextField name="firstName" label="First Name" value={form.firstName} onChange={handleChange} required fullWidth />
+                <TextField name="lastName" label="Last Name" value={form.lastName} onChange={handleChange} required fullWidth />
+              </Stack>
+              <TextField name="email" label="Email" type="email" value={form.email} onChange={handleChange} required fullWidth />
+              <Stack direction="row" spacing={2} pt={1}>
+                <Button type="button" variant="outlined" onClick={() => navigate(-1)} fullWidth>Cancel</Button>
+                <Button type="submit" variant="contained" startIcon={<Save size={16} />} fullWidth sx={{ borderRadius: 2 }}>Save</Button>
+              </Stack>
+            </Stack>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Snackbar open={Boolean(snack)} autoHideDuration={3000} onClose={() => setSnack(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        {snack && <Alert severity={snack.severity} onClose={() => setSnack(null)}>{snack.message}</Alert>}
+      </Snackbar>
+    </Box>
   );
 };
 
