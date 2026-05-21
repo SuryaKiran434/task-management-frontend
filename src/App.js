@@ -7,7 +7,6 @@ import { UserProvider } from './contexts/userContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
 import AppLayout from './components/layout/AppLayout';
-import './App.css';
 
 // Public pages
 import Home from './pages/Home';

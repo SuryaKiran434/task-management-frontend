@@ -2,7 +2,6 @@
 import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
-import './DropdownMenu.css';
 
 function DropdownMenu() {
   const { logout } = useContext(AuthContext);
