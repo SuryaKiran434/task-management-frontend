@@ -2,7 +2,7 @@ import axios from 'axios';
 import authService from '../services/authService';
 
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8081/api', // Backend URL
+  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081/api',
   headers: { 'Content-Type': 'application/json' },
 });
 

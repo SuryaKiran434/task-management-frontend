@@ -1,4 +1,7 @@
+import { parseDate } from './dates';
+
 export const formatDate = (date) => {
+  if (!date) return '';
   const options = { year: 'numeric', month: 'long', day: 'numeric' };
-  return new Date(date).toLocaleDateString(undefined, options);
+  return parseDate(date).toLocaleDateString(undefined, options);
 };
