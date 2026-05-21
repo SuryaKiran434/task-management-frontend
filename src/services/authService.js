@@ -56,6 +56,8 @@ const authService = {
 
   getToken: () => localStorage.getItem('token'),
 
+  getRefreshToken: () => localStorage.getItem('refreshToken'),
+
   isTokenExpired: (token) => {
     const { exp } = jwtDecode(token);
     return Date.now() >= exp * 1000;

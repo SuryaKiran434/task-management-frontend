@@ -29,6 +29,8 @@ export const AuthProvider = ({ children }) => {
     };
 
     initializeAuth();
+    // checkAuth is intentionally not in deps: this runs once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkAuth = async () => {
