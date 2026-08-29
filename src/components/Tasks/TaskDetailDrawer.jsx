@@ -204,13 +204,19 @@ function ActivitySection({ taskId }) {
   );
 }
 
-export default function TaskDetailDrawer({ open, onClose, task }) {
+export default function TaskDetailDrawer({ open, onClose, onExited, task }) {
   const [tab, setTab] = useState(0);
 
   if (!task) return null;
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose} PaperProps={{ sx: { width: { xs: '100%', sm: 480 }, p: 3 } }}>
+    <Drawer
+      anchor="right"
+      open={open}
+      onClose={onClose}
+      SlideProps={onExited ? { onExited } : undefined}
+      PaperProps={{ sx: { width: { xs: '100%', sm: 480 }, p: 3 } }}
+    >
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
         <Box sx={{ flex: 1, pr: 2 }}>
           <Typography variant="h6" fontWeight={700} gutterBottom>{task.title}</Typography>

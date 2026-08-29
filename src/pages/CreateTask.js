@@ -1,17 +1,17 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Card, CardContent, Typography, TextField, MenuItem,
   Button, Stack, Alert, Snackbar, Divider,
 } from '@mui/material';
 import { ArrowLeft, PlusCircle } from 'lucide-react';
-import { TaskContext } from '../contexts/TaskContext';
+import { useTaskActions } from '../contexts/TaskContext';
 import { PRIORITY_OPTIONS as PRIORITIES } from '../theme/taskColors';
 
 const STATUSES = ['To-Do', 'In Progress', 'Complete'];
 
 export default function CreateTask() {
-  const { createTask } = useContext(TaskContext);
+  const { createTask } = useTaskActions();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ title: '', description: '', priority: 'LOW', dueDate: '', status: 'To-Do' });

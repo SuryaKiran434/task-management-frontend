@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import getTheme from '../theme/theme';
@@ -12,18 +12,22 @@ export const ThemeProvider = ({ children }) => {
     document.documentElement.setAttribute('data-theme', mode);
   }, [mode]);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setMode((prev) => {
       const next = prev === 'light' ? 'dark' : 'light';
       localStorage.setItem('theme', next);
       return next;
     });
-  };
+  }, []);
 
-  const theme = getTheme(mode);
+  // createTheme() walks the whole 300-line theme definition; rebuilding it on
+  // every render hands MuiThemeProvider a new object and re-renders every
+  // styled component in the tree.
+  const theme = useMemo(() => getTheme(mode), [mode]);
+  const value = useMemo(() => ({ theme: mode, toggleTheme }), [mode, toggleTheme]);
 
   return (
-    <ThemeContext.Provider value={{ theme: mode, toggleTheme }}>
+    <ThemeContext.Provider value={value}>
       <MuiThemeProvider theme={theme}>
         <CssBaseline />
         {children}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, Avatar, Button, Stack,
@@ -12,7 +12,7 @@ import userService from '../services/userService';
 import { AuthContext } from '../contexts/AuthContext';
 import { PRIORITY_COLORS as PRIORITY_COLOR, STATUS_COLORS as STATUS_COLOR } from '../theme/taskColors';
 
-function DueDateBadge({ date }) {
+const DueDateBadge = React.memo(function DueDateBadge({ date }) {
   if (!date) return <Typography variant="caption" color="text.disabled">—</Typography>;
   const d = parseDate(date);
   const overdue = isPast(d) && !isToday(d);
@@ -21,7 +21,38 @@ function DueDateBadge({ date }) {
       {overdue ? '⚠ ' : isToday(d) ? '⏰ ' : ''}{format(d, 'MMM d, yyyy')}
     </Typography>
   );
-}
+});
+
+/**
+ * One row of the user's task table. Memoised on `task` alone — it takes no
+ * callbacks, so a re-render of ManageUser (role toggle, snackbar, delete
+ * dialog) leaves every row untouched.
+ */
+export const UserTaskRow = React.memo(function UserTaskRow({ task }) {
+  return (
+    <tr style={{ borderBottom: '1px solid rgba(128,128,128,0.08)' }}>
+      <td style={{ padding: '10px 12px', maxWidth: 280 }}>
+        <Typography variant="body2" fontWeight={500} noWrap title={task.title}>{task.title}</Typography>
+        {task.description && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+            {task.description}
+          </Typography>
+        )}
+      </td>
+      <td style={{ padding: '10px 12px' }}>
+        <Chip label={task.status} size="small"
+          sx={{ fontSize: '0.7rem', backgroundColor: `${STATUS_COLOR[task.status]}18`, color: STATUS_COLOR[task.status] }} />
+      </td>
+      <td style={{ padding: '10px 12px' }}>
+        <Chip label={task.priority} size="small"
+          sx={{ fontSize: '0.7rem', backgroundColor: `${PRIORITY_COLOR[task.priority]}18`, color: PRIORITY_COLOR[task.priority] }} />
+      </td>
+      <td style={{ padding: '10px 12px' }}>
+        <DueDateBadge date={task.dueDate} />
+      </td>
+    </tr>
+  );
+});
 
 function getRoleNames(user) {
   if (!user?.roles) return [];
@@ -55,11 +86,11 @@ export default function ManageUser() {
       .finally(() => setLoadingTasks(false));
   }, [userId]);
 
-  const roles = getRoleNames(user);
+  const roles = useMemo(() => getRoleNames(user), [user]);
   const isAdminUser = roles.some(r => r === 'ROLE_ADMIN');
   const isSelf = String(currentUser?.id) === String(userId);
 
-  const handleAssignAdmin = async () => {
+  const handleAssignAdmin = useCallback(async () => {
     setActionLoading(true);
     try {
       await userService.assignAdmin(userId);
@@ -68,9 +99,9 @@ export default function ManageUser() {
     } catch {
       setSnack({ message: 'Failed to assign admin role', severity: 'error' });
     } finally { setActionLoading(false); }
-  };
+  }, [userId]);
 
-  const handleRemoveAdmin = async () => {
+  const handleRemoveAdmin = useCallback(async () => {
     setActionLoading(true);
     try {
       await userService.removeAdmin(userId);
@@ -79,9 +110,9 @@ export default function ManageUser() {
     } catch {
       setSnack({ message: 'Failed to remove admin role', severity: 'error' });
     } finally { setActionLoading(false); }
-  };
+  }, [userId]);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     setActionLoading(true);
     try {
       await userService.deleteUser(userId);
@@ -90,14 +121,24 @@ export default function ManageUser() {
     } catch {
       setSnack({ message: 'Failed to delete user', severity: 'error' });
     } finally { setActionLoading(false); setDeleteConfirm(false); }
-  };
+  }, [userId, navigate]);
 
-  const taskStats = [
-    { label: 'Total', value: tasks.length, color: '#4F46E5' },
-    { label: 'To Do', value: tasks.filter(t => t.status === 'To-Do').length, color: '#6366F1' },
-    { label: 'In Progress', value: tasks.filter(t => t.status === 'In Progress').length, color: '#F59E0B' },
-    { label: 'Complete', value: tasks.filter(t => t.status === 'Complete').length, color: '#10B981' },
-  ];
+  // Four full passes over the task list on every render (snackbar tick, dialog
+  // open, role toggle) collapsed into one pass per task-list change.
+  const taskStats = useMemo(() => {
+    let todo = 0, inProgress = 0, complete = 0;
+    for (const t of tasks) {
+      if (t.status === 'To-Do') todo++;
+      else if (t.status === 'In Progress') inProgress++;
+      else if (t.status === 'Complete') complete++;
+    }
+    return [
+      { label: 'Total', value: tasks.length, color: '#4F46E5' },
+      { label: 'To Do', value: todo, color: '#6366F1' },
+      { label: 'In Progress', value: inProgress, color: '#F59E0B' },
+      { label: 'Complete', value: complete, color: '#10B981' },
+    ];
+  }, [tasks]);
 
   return (
     <Box>
@@ -123,8 +164,8 @@ export default function ManageUser() {
                 <Typography variant="h5" fontWeight={700}>{user.firstName} {user.lastName}</Typography>
                 <Typography variant="body2" color="text.secondary" mb={1}>{user.email}</Typography>
                 <Stack direction="row" spacing={1} flexWrap="wrap">
-                  {roles.map((r, i) => (
-                    <Chip key={i} label={r.replace('ROLE_', '')} size="small"
+                  {roles.map((r) => (
+                    <Chip key={r} label={r.replace('ROLE_', '')} size="small"
                       color={r === 'ROLE_ADMIN' ? 'secondary' : 'default'} variant="outlined" />
                   ))}
                 </Stack>
@@ -234,27 +275,7 @@ export default function ManageUser() {
                 </thead>
                 <tbody>
                   {tasks.map(task => (
-                    <tr key={task.id} style={{ borderBottom: '1px solid rgba(128,128,128,0.08)' }}>
-                      <td style={{ padding: '10px 12px', maxWidth: 280 }}>
-                        <Typography variant="body2" fontWeight={500} noWrap title={task.title}>{task.title}</Typography>
-                        {task.description && (
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                            {task.description}
-                          </Typography>
-                        )}
-                      </td>
-                      <td style={{ padding: '10px 12px' }}>
-                        <Chip label={task.status} size="small"
-                          sx={{ fontSize: '0.7rem', backgroundColor: `${STATUS_COLOR[task.status]}18`, color: STATUS_COLOR[task.status] }} />
-                      </td>
-                      <td style={{ padding: '10px 12px' }}>
-                        <Chip label={task.priority} size="small"
-                          sx={{ fontSize: '0.7rem', backgroundColor: `${PRIORITY_COLOR[task.priority]}18`, color: PRIORITY_COLOR[task.priority] }} />
-                      </td>
-                      <td style={{ padding: '10px 12px' }}>
-                        <DueDateBadge date={task.dueDate} />
-                      </td>
-                    </tr>
+                    <UserTaskRow key={task.id} task={task} />
                   ))}
                 </tbody>
               </table>

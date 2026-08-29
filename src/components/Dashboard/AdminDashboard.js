@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import { Users, Trash2, Settings, CheckSquare, Clock, AlertTriangle, TrendingUp, UserPlus } from 'lucide-react';
 import { UserContext } from '../../contexts/userContext';
-import { TaskContext } from '../../contexts/TaskContext';
+import { useTaskActions } from '../../contexts/TaskContext';
 import { taskService } from '../../services/taskService';
 import CreateUserDialog from './CreateUserDialog';
 
@@ -27,7 +27,7 @@ function StatCard({ label, value, color, icon }) {
 
 export default function AdminDashboard() {
   const { users, fetchAllUsers, deleteUser } = useContext(UserContext);
-  const { fetchTasks } = useContext(TaskContext);
+  const { fetchTasks } = useTaskActions();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -109,9 +109,9 @@ export default function AdminDashboard() {
                   <Typography variant="caption" color="text.secondary" noWrap>{user.email}</Typography>
                 </Box>
                 <Stack direction="row" spacing={0.5}>
-                  {user.roles?.map((r, i) => {
+                  {user.roles?.map((r) => {
                     const name = typeof r === 'string' ? r : (r.authority || r.name || String(r));
-                    return <Chip key={i} label={name.replace('ROLE_', '')} size="small" variant="outlined" color={name === 'ROLE_ADMIN' ? 'secondary' : 'default'} sx={{ fontSize: '0.65rem' }} />;
+                    return <Chip key={name} label={name.replace('ROLE_', '')} size="small" variant="outlined" color={name === 'ROLE_ADMIN' ? 'secondary' : 'default'} sx={{ fontSize: '0.65rem' }} />;
                   })}
                 </Stack>
                 <Stack direction="row" spacing={0.5}>
