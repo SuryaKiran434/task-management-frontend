@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Button, TextField, InputAdornment, Chip, Stack,
@@ -23,8 +23,9 @@ import TaskDetailDrawer from '../components/Tasks/TaskDetailDrawer';
 import { PRIORITY_COLORS as PRIORITY_COLOR, STATUS_COLORS as STATUS_COLOR } from '../theme/taskColors';
 
 const KANBAN_COLS = ['To-Do', 'In Progress', 'Complete'];
+const NOOP = () => {};
 
-function DueDateBadge({ date }) {
+const DueDateBadge = React.memo(function DueDateBadge({ date }) {
   if (!date) return null;
   const d = parseDate(date);
   const overdue = isPast(d) && !isToday(d);
@@ -35,80 +36,169 @@ function DueDateBadge({ date }) {
       {format(d, 'MMM d')}
     </Typography>
   );
-}
+});
 
-function TaskCard({ task, selected, onSelect, onEdit, onDelete, draggable = false, isDragging = false }) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
+/**
+ * One kanban card. Memoised: with every callback below stabilised by
+ * useCallback in AllTasks, a card only re-renders when its own task object or
+ * its `selected`/`isDragging` flags change — not when a sibling is selected or
+ * a filter keystroke lands.
+ */
+const TaskCard = React.memo(function TaskCard({
+  task, selected, onSelect, onEdit, onDelete, onOpenDetail,
+  draggable = false, isDragging = false,
+}) {
   const dragHandle = useDraggable({ id: `task-${task.id}`, data: { task }, disabled: !draggable });
   const dragStyle = draggable && dragHandle.transform
     ? { transform: `translate3d(${dragHandle.transform.x}px, ${dragHandle.transform.y}px, 0)`, zIndex: 1000 }
     : undefined;
+
+  const handleSelect = useCallback(() => onSelect(task.id), [onSelect, task.id]);
+  const handleEdit = useCallback(() => onEdit(task), [onEdit, task]);
+  const handleDelete = useCallback(() => onDelete(task.id), [onDelete, task.id]);
+  const handleOpen = useCallback(() => onOpenDetail(task), [onOpenDetail, task]);
+
   return (
-    <>
-      <Card
-        ref={draggable ? dragHandle.setNodeRef : undefined}
-        style={dragStyle}
-        elevation={0}
-        sx={{
-          border: '1px solid',
-          borderColor: selected ? 'primary.main' : 'divider',
-          borderLeft: `4px solid ${PRIORITY_COLOR[task.priority] || '#ccc'}`,
-          borderRadius: 2,
-          opacity: isDragging ? 0.4 : 1,
-          transition: 'box-shadow 0.15s, border-color 0.15s, opacity 0.15s',
-          '&:hover': { boxShadow: 2 },
-        }}
-      >
-        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-            {draggable && (
-              <Box
-                {...dragHandle.attributes}
-                {...dragHandle.listeners}
-                sx={{
-                  cursor: 'grab',
-                  color: 'text.disabled',
-                  display: 'flex',
-                  alignItems: 'center',
-                  pt: 0.25,
-                  '&:active': { cursor: 'grabbing' },
-                  '&:hover': { color: 'text.secondary' },
-                }}
-                aria-label="Drag task"
-              >
-                <GripVertical size={14} />
-              </Box>
-            )}
-            <Checkbox size="small" checked={selected} onChange={() => onSelect(task.id)} sx={{ p: 0, mt: 0.2 }} />
-            <Box sx={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => setDrawerOpen(true)}>
-              <Typography variant="body2" fontWeight={600} noWrap title={task.title}>{task.title}</Typography>
-              {task.description && (
-                <Typography variant="caption" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {task.description}
-                </Typography>
-              )}
-              <Stack direction="row" spacing={0.5} mt={1} flexWrap="wrap">
-                <Chip label={task.status} size="small" sx={{ fontSize: '0.65rem', backgroundColor: `${STATUS_COLOR[task.status]}18`, color: STATUS_COLOR[task.status], height: 20 }} />
-                <Chip label={task.priority} size="small" sx={{ fontSize: '0.65rem', backgroundColor: `${PRIORITY_COLOR[task.priority]}18`, color: PRIORITY_COLOR[task.priority], height: 20 }} />
-                {task.labels?.map(l => <Chip key={l.id} label={l.name} size="small" sx={{ fontSize: '0.65rem', height: 20, backgroundColor: l.color ? `${l.color}20` : undefined, color: l.color }} />)}
-              </Stack>
+    <Card
+      ref={draggable ? dragHandle.setNodeRef : undefined}
+      style={dragStyle}
+      elevation={0}
+      sx={{
+        border: '1px solid',
+        borderColor: selected ? 'primary.main' : 'divider',
+        borderLeft: `4px solid ${PRIORITY_COLOR[task.priority] || '#ccc'}`,
+        borderRadius: 2,
+        opacity: isDragging ? 0.4 : 1,
+        transition: 'box-shadow 0.15s, border-color 0.15s, opacity 0.15s',
+        '&:hover': { boxShadow: 2 },
+      }}
+    >
+      <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+          {draggable && (
+            <Box
+              {...dragHandle.attributes}
+              {...dragHandle.listeners}
+              sx={{
+                cursor: 'grab',
+                color: 'text.disabled',
+                display: 'flex',
+                alignItems: 'center',
+                pt: 0.25,
+                '&:active': { cursor: 'grabbing' },
+                '&:hover': { color: 'text.secondary' },
+              }}
+              aria-label="Drag task"
+            >
+              <GripVertical size={14} />
             </Box>
-            <Stack direction="row" spacing={0.25}>
-              <Tooltip title="Edit"><IconButton size="small" onClick={() => onEdit(task)}><Edit3 size={14} /></IconButton></Tooltip>
-              <Tooltip title="Delete"><IconButton size="small" color="error" onClick={() => onDelete(task.id)}><Trash2 size={14} /></IconButton></Tooltip>
+          )}
+          <Checkbox size="small" checked={selected} onChange={handleSelect} sx={{ p: 0, mt: 0.2 }} />
+          <Box sx={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={handleOpen}>
+            <Typography variant="body2" fontWeight={600} noWrap title={task.title}>{task.title}</Typography>
+            {task.description && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                {task.description}
+              </Typography>
+            )}
+            <Stack direction="row" spacing={0.5} mt={1} flexWrap="wrap">
+              <Chip label={task.status} size="small" sx={{ fontSize: '0.65rem', backgroundColor: `${STATUS_COLOR[task.status]}18`, color: STATUS_COLOR[task.status], height: 20 }} />
+              <Chip label={task.priority} size="small" sx={{ fontSize: '0.65rem', backgroundColor: `${PRIORITY_COLOR[task.priority]}18`, color: PRIORITY_COLOR[task.priority], height: 20 }} />
+              {task.labels?.map(l => <Chip key={l.id} label={l.name} size="small" sx={{ fontSize: '0.65rem', height: 20, backgroundColor: l.color ? `${l.color}20` : undefined, color: l.color }} />)}
             </Stack>
           </Box>
-          <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
-            <DueDateBadge date={task.dueDate} />
-          </Box>
-        </CardContent>
-      </Card>
-      <TaskDetailDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} task={task} />
-    </>
+          <Stack direction="row" spacing={0.25}>
+            <Tooltip title="Edit"><IconButton size="small" onClick={handleEdit}><Edit3 size={14} /></IconButton></Tooltip>
+            <Tooltip title="Delete"><IconButton size="small" color="error" onClick={handleDelete}><Trash2 size={14} /></IconButton></Tooltip>
+          </Stack>
+        </Box>
+        <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+          <DueDateBadge date={task.dueDate} />
+        </Box>
+      </CardContent>
+    </Card>
   );
-}
+});
 
-function KanbanColumn({ col, colTasks, selectedIds, onSelect, onEdit, onDelete, activeTaskId }) {
+/** One table row. Memoised on the same terms as TaskCard. */
+const TaskTableRow = React.memo(function TaskTableRow({
+  task, selected, onSelect, onEdit, onDelete, onOpenDetail,
+}) {
+  const handleSelect = useCallback(() => onSelect(task.id), [onSelect, task.id]);
+  const handleEdit = useCallback(() => onEdit(task), [onEdit, task]);
+  const handleDelete = useCallback(() => onDelete(task.id), [onDelete, task.id]);
+  const handleOpen = useCallback(() => onOpenDetail(task), [onOpenDetail, task]);
+
+  return (
+    <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', cursor: 'default' }}>
+      <td style={{ padding: '10px 12px' }}>
+        <Checkbox size="small" checked={selected} onChange={handleSelect} inputProps={{ 'aria-label': `Select ${task.title}` }} />
+      </td>
+      <td style={{ padding: '10px 12px', maxWidth: 220 }}>
+        <Typography variant="body2" fontWeight={500} noWrap title={task.title} sx={{ cursor: 'pointer', '&:hover': { color: 'primary.main' } }} onClick={handleOpen}>
+          {task.title}
+        </Typography>
+      </td>
+      <td style={{ padding: '10px 12px' }}>
+        <Chip label={task.status} size="small" sx={{ fontSize: '0.7rem', backgroundColor: `${STATUS_COLOR[task.status]}18`, color: STATUS_COLOR[task.status] }} />
+      </td>
+      <td style={{ padding: '10px 12px' }}>
+        <Chip label={task.priority} size="small" sx={{ fontSize: '0.7rem', backgroundColor: `${PRIORITY_COLOR[task.priority]}18`, color: PRIORITY_COLOR[task.priority] }} />
+      </td>
+      <td style={{ padding: '10px 12px' }}>
+        <DueDateBadge date={task.dueDate} />
+      </td>
+      <td style={{ padding: '10px 12px' }}>
+        <Stack direction="row" spacing={0.5}>
+          <Tooltip title="Edit"><IconButton size="small" onClick={handleEdit}><Edit3 size={14} /></IconButton></Tooltip>
+          <Tooltip title="Delete"><IconButton size="small" color="error" onClick={handleDelete}><Trash2 size={14} /></IconButton></Tooltip>
+        </Stack>
+      </td>
+    </tr>
+  );
+});
+
+export { TaskCard, TaskTableRow };
+
+const TableView = React.memo(function TableView({ tasks, selectedSet, onSelect, onSelectAll, onEdit, onDelete, onOpenDetail }) {
+  const allSelected = tasks.length > 0 && selectedSet.size === tasks.length;
+  return (
+    <Box sx={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+        <thead>
+          <tr>
+            <th style={{ padding: '10px 12px', textAlign: 'left', borderBottom: '1px solid rgba(0,0,0,0.1)', width: 40 }}>
+              <Checkbox size="small" checked={allSelected} indeterminate={selectedSet.size > 0 && !allSelected} onChange={onSelectAll} inputProps={{ 'aria-label': 'Select all tasks' }} />
+            </th>
+            {['Title', 'Status', 'Priority', 'Due Date', 'Actions'].map(h => (
+              <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, borderBottom: '1px solid rgba(0,0,0,0.1)', whiteSpace: 'nowrap' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {tasks.map(task => (
+            <TaskTableRow
+              key={task.id}
+              task={task}
+              selected={selectedSet.has(task.id)}
+              onSelect={onSelect}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onOpenDetail={onOpenDetail}
+            />
+          ))}
+        </tbody>
+      </table>
+      {tasks.length === 0 && (
+        <Box sx={{ textAlign: 'center', py: 6 }}>
+          <Typography color="text.secondary">No tasks found.</Typography>
+        </Box>
+      )}
+    </Box>
+  );
+});
+
+const KanbanColumn = React.memo(function KanbanColumn({ col, colTasks, selectedSet, onSelect, onEdit, onDelete, onOpenDetail, activeTaskId }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${col}`, data: { status: col } });
   return (
     <Box
@@ -135,10 +225,11 @@ function KanbanColumn({ col, colTasks, selectedIds, onSelect, onEdit, onDelete, 
             task={task}
             draggable
             isDragging={activeTaskId === task.id}
-            selected={selectedIds.includes(task.id)}
+            selected={selectedSet.has(task.id)}
             onSelect={onSelect}
             onEdit={onEdit}
             onDelete={onDelete}
+            onOpenDetail={onOpenDetail}
           />
         ))}
         {colTasks.length === 0 && (
@@ -149,20 +240,30 @@ function KanbanColumn({ col, colTasks, selectedIds, onSelect, onEdit, onDelete, 
       </Stack>
     </Box>
   );
-}
+});
 
-function KanbanBoard({ tasks, selectedIds, onSelect, onEdit, onDelete, onStatusChange }) {
+function KanbanBoard({ tasks, selectedSet, onSelect, onEdit, onDelete, onOpenDetail, onStatusChange }) {
   const [activeTask, setActiveTask] = useState(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor),
   );
 
-  const handleDragStart = (e) => {
-    setActiveTask(e.active.data.current?.task || null);
-  };
+  // Group once per task-list change instead of running `tasks.filter` per
+  // column on every render.
+  const byColumn = useMemo(() => {
+    const groups = Object.fromEntries(KANBAN_COLS.map(c => [c, []]));
+    for (const t of tasks) {
+      if (groups[t.status]) groups[t.status].push(t);
+    }
+    return groups;
+  }, [tasks]);
 
-  const handleDragEnd = (e) => {
+  const handleDragStart = useCallback((e) => {
+    setActiveTask(e.active.data.current?.task || null);
+  }, []);
+
+  const handleDragEnd = useCallback((e) => {
     setActiveTask(null);
     const { active, over } = e;
     if (!over) return;
@@ -171,20 +272,23 @@ function KanbanBoard({ tasks, selectedIds, onSelect, onEdit, onDelete, onStatusC
     if (task && newStatus && task.status !== newStatus) {
       onStatusChange(task, newStatus);
     }
-  };
+  }, [onStatusChange]);
+
+  const handleDragCancel = useCallback(() => setActiveTask(null), []);
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveTask(null)}>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
       <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 2, alignItems: 'flex-start', scrollSnapType: { xs: 'x mandatory', md: 'none' } }}>
         {KANBAN_COLS.map(col => (
           <KanbanColumn
             key={col}
             col={col}
-            colTasks={tasks.filter(t => t.status === col)}
-            selectedIds={selectedIds}
+            colTasks={byColumn[col]}
+            selectedSet={selectedSet}
             onSelect={onSelect}
             onEdit={onEdit}
             onDelete={onDelete}
+            onOpenDetail={onOpenDetail}
             activeTaskId={activeTask?.id}
           />
         ))}
@@ -192,75 +296,11 @@ function KanbanBoard({ tasks, selectedIds, onSelect, onEdit, onDelete, onStatusC
       <DragOverlay dropAnimation={null}>
         {activeTask ? (
           <Box sx={{ width: 280, opacity: 0.95, transform: 'rotate(2deg)', boxShadow: 6 }}>
-            <TaskCard task={activeTask} selected={false} onSelect={() => {}} onEdit={() => {}} onDelete={() => {}} />
+            <TaskCard task={activeTask} selected={false} onSelect={NOOP} onEdit={NOOP} onDelete={NOOP} onOpenDetail={NOOP} />
           </Box>
         ) : null}
       </DragOverlay>
     </DndContext>
-  );
-}
-
-function TableView({ tasks, selectedIds, onSelect, onSelectAll, onEdit, onDelete }) {
-  const allSelected = tasks.length > 0 && selectedIds.length === tasks.length;
-  return (
-    <Box sx={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-        <thead>
-          <tr>
-            <th style={{ padding: '10px 12px', textAlign: 'left', borderBottom: '1px solid rgba(0,0,0,0.1)', width: 40 }}>
-              <Checkbox size="small" checked={allSelected} indeterminate={selectedIds.length > 0 && !allSelected} onChange={() => onSelectAll()} />
-            </th>
-            {['Title', 'Status', 'Priority', 'Due Date', 'Actions'].map(h => (
-              <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, borderBottom: '1px solid rgba(0,0,0,0.1)', whiteSpace: 'nowrap' }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {tasks.map(task => (
-            <TableRow key={task.id} task={task} selected={selectedIds.includes(task.id)} onSelect={onSelect} onEdit={onEdit} onDelete={onDelete} />
-          ))}
-        </tbody>
-      </table>
-      {tasks.length === 0 && (
-        <Box sx={{ textAlign: 'center', py: 6 }}>
-          <Typography color="text.secondary">No tasks found.</Typography>
-        </Box>
-      )}
-    </Box>
-  );
-}
-
-function TableRow({ task, selected, onSelect, onEdit, onDelete }) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  return (
-    <>
-      <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', cursor: 'default' }}>
-        <td style={{ padding: '10px 12px' }}>
-          <Checkbox size="small" checked={selected} onChange={() => onSelect(task.id)} />
-        </td>
-        <td style={{ padding: '10px 12px', maxWidth: 220 }}>
-          <Typography variant="body2" fontWeight={500} noWrap title={task.title} sx={{ cursor: 'pointer', '&:hover': { color: 'primary.main' } }} onClick={() => setDrawerOpen(true)}>
-            {task.title}
-          </Typography>
-        </td>
-        <td style={{ padding: '10px 12px' }}>
-          <Chip label={task.status} size="small" sx={{ fontSize: '0.7rem', backgroundColor: `${STATUS_COLOR[task.status]}18`, color: STATUS_COLOR[task.status] }} />
-        </td>
-        <td style={{ padding: '10px 12px' }}>
-          <Chip label={task.priority} size="small" sx={{ fontSize: '0.7rem', backgroundColor: `${PRIORITY_COLOR[task.priority]}18`, color: PRIORITY_COLOR[task.priority] }} />
-        </td>
-        <td style={{ padding: '10px 12px' }}>
-          <DueDateBadge date={task.dueDate} />
-        </td>
-        <td style={{ padding: '10px 12px' }}>
-          <Stack direction="row" spacing={0.5}>
-            <Tooltip title="Edit"><IconButton size="small" onClick={() => onEdit(task)}><Edit3 size={14} /></IconButton></Tooltip>
-            <Tooltip title="Delete"><IconButton size="small" color="error" onClick={() => onDelete(task.id)}><Trash2 size={14} /></IconButton></Tooltip>
-          </Stack>
-        </td>
-      </tr>
-      <TaskDetailDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} task={task} />
-    </>
   );
 }
 
@@ -277,7 +317,15 @@ export default function AllTasks({ userId }) {
   const [loading, setLoading] = useState(false);
   const [snack, setSnack] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  // A single detail drawer for the whole page. Previously every row rendered
+  // its own <TaskDetailDrawer>, i.e. one MUI Modal instance per task.
+  // `detailOpen` is separate from `detailTask` so the drawer keeps its content
+  // while it slides out, then unmounts on `onExited`.
+  const [detailTask, setDetailTask] = useState(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const searchTimer = useRef(null);
+
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
@@ -296,7 +344,9 @@ export default function AllTasks({ userId }) {
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
 
-  const handleSearch = (e) => {
+  useEffect(() => () => clearTimeout(searchTimer.current), []);
+
+  const handleSearch = useCallback((e) => {
     const q = e.target.value;
     setSearchQuery(q);
     clearTimeout(searchTimer.current);
@@ -304,33 +354,44 @@ export default function AllTasks({ userId }) {
       if (q.trim().length > 1) searchTasks(q.trim());
       else loadTasks();
     }, 350);
-  };
+  }, [searchTasks, loadTasks]);
 
-  const handleStatusFilter = (e) => {
+  const handleStatusFilter = useCallback((e) => {
     const val = e.target.value;
     setStatusFilter(val);
     if (val || priorityFilter) filterTasks(val || null, priorityFilter || null);
     else loadTasks();
-  };
+  }, [priorityFilter, filterTasks, loadTasks]);
 
-  const handlePriorityFilter = (e) => {
+  const handlePriorityFilter = useCallback((e) => {
     const val = e.target.value;
     setPriorityFilter(val);
     if (val || statusFilter) filterTasks(statusFilter || null, val || null);
     else loadTasks();
-  };
+  }, [statusFilter, filterTasks, loadTasks]);
 
-  const handleSelect = (id) => {
+  const handleSelect = useCallback((id) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
+  }, []);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     setSelectedIds(prev => prev.length === tasks.length ? [] : tasks.map(t => t.id));
-  };
+  }, [tasks]);
 
-  const handleDelete = (taskId) => {
+  const handleDelete = useCallback((taskId) => {
     setDeleteConfirm(taskId);
-  };
+  }, []);
+
+  const handleEdit = useCallback((task) => {
+    navigate(`/edit-tasks/${task.id}`);
+  }, [navigate]);
+
+  const handleOpenDetail = useCallback((task) => {
+    setDetailTask(task);
+    setDetailOpen(true);
+  }, []);
+  const handleCloseDetail = useCallback(() => setDetailOpen(false), []);
+  const handleDetailExited = useCallback(() => setDetailTask(null), []);
 
   const confirmDelete = async () => {
     try {
@@ -369,11 +430,7 @@ export default function AllTasks({ userId }) {
     }
   };
 
-  const handleEdit = (task) => {
-    navigate(`/edit-tasks/${task.id}`);
-  };
-
-  const handleStatusChange = async (task, newStatus) => {
+  const handleStatusChange = useCallback(async (task, newStatus) => {
     try {
       await updateTask(task.id, { ...task, status: newStatus });
       setSnack({ message: `Moved to ${newStatus}`, severity: 'success' });
@@ -381,7 +438,7 @@ export default function AllTasks({ userId }) {
       setSnack({ message: 'Failed to move task', severity: 'error' });
       loadTasks();
     }
-  };
+  }, [updateTask, loadTasks]);
 
   return (
     <Box>
@@ -453,11 +510,13 @@ export default function AllTasks({ userId }) {
       <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
         <Box sx={{ p: 2 }}>
           {view === 'table'
-            ? <TableView tasks={tasks} selectedIds={selectedIds} onSelect={handleSelect} onSelectAll={handleSelectAll} onEdit={handleEdit} onDelete={handleDelete} />
-            : <KanbanBoard tasks={tasks} selectedIds={selectedIds} onSelect={handleSelect} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} />
+            ? <TableView tasks={tasks} selectedSet={selectedSet} onSelect={handleSelect} onSelectAll={handleSelectAll} onEdit={handleEdit} onDelete={handleDelete} onOpenDetail={handleOpenDetail} />
+            : <KanbanBoard tasks={tasks} selectedSet={selectedSet} onSelect={handleSelect} onEdit={handleEdit} onDelete={handleDelete} onOpenDetail={handleOpenDetail} onStatusChange={handleStatusChange} />
           }
         </Box>
       </Paper>
+
+      <TaskDetailDrawer open={detailOpen} onClose={handleCloseDetail} onExited={handleDetailExited} task={detailTask} />
 
       {/* Delete confirmation */}
       <Dialog open={Boolean(deleteConfirm)} onClose={() => setDeleteConfirm(null)} maxWidth="xs" fullWidth>

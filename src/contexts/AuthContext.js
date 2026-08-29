@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
 import authService from '../services/authService';
 import { jwtDecode } from 'jwt-decode';
 
@@ -9,52 +9,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        const storedUser = localStorage.getItem('currentUser');
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          setCurrentUser(parsedUser);
-          setIsAuthenticated(true);
-          console.log('User loaded from localStorage:', parsedUser);
-        } else {
-          await checkAuth();
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeAuth();
-    // checkAuth is intentionally not in deps: this runs once on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const checkAuth = async () => {
-    const token = authService.getToken();
-    if (token) {
-      console.log('Checking authentication for token:', token);
-      if (authService.isTokenExpired(token)) {
-        try {
-          await refreshAuthToken();
-        } catch (error) {
-          console.error('Error refreshing token:', error);
-          setIsAuthenticated(false);
-          authService.logout();
-        }
-      } else {
-        await fetchUserInfo(token);
-      }
-    } else {
-      console.log('No token found');
-      setLoading(false);
-    }
-  };
-
-  const fetchUserInfo = async (token) => {
+  const fetchUserInfo = useCallback(async (token) => {
     try {
       const decodedToken = jwtDecode(token);
       const userId = decodedToken.userId;  // Extract userId from the token
@@ -79,9 +34,9 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const refreshAuthToken = async () => {
+  const refreshAuthToken = useCallback(async () => {
     try {
       const newToken = await authService.refreshToken();
       if (newToken) {
@@ -97,9 +52,52 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchUserInfo]);
 
-  const login = async (email, password) => {
+  const checkAuth = useCallback(async () => {
+    const token = authService.getToken();
+    if (token) {
+      if (authService.isTokenExpired(token)) {
+        try {
+          await refreshAuthToken();
+        } catch (error) {
+          console.error('Error refreshing token:', error);
+          setIsAuthenticated(false);
+          authService.logout();
+        }
+      } else {
+        await fetchUserInfo(token);
+      }
+    } else {
+      console.log('No token found');
+      setLoading(false);
+    }
+  }, [refreshAuthToken, fetchUserInfo]);
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        const storedUser = localStorage.getItem('currentUser');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          setCurrentUser(parsedUser);
+          setIsAuthenticated(true);
+        } else {
+          await checkAuth();
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+    // checkAuth is intentionally not in deps: this runs once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const login = useCallback(async (email, password) => {
     try {
       const user = await authService.login(email, password);
       const token = user.token;
@@ -126,18 +124,23 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     authService.logout();
     localStorage.removeItem('currentUser');
     setCurrentUser(null);
     setIsAuthenticated(false);
     console.log('User logged out');
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({ isAuthenticated, currentUser, login, logout, refreshAuthToken }),
+    [isAuthenticated, currentUser, login, logout, refreshAuthToken]
+  );
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, currentUser, login, logout, refreshAuthToken }}>
+    <AuthContext.Provider value={value}>
       {!loading && children}
     </AuthContext.Provider>
   );

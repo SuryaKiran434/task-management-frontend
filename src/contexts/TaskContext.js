@@ -1,9 +1,29 @@
 // src/contexts/TaskContext.js
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { taskService } from '../services/taskService';
 import { useToast } from './ToastContext';
 
+/**
+ * The task state is split into two contexts so that a change in one does not
+ * re-render consumers of the other:
+ *
+ *  - `TaskDataContext`    — slowly-changing server data ({ tasks, error }).
+ *                           New identity only when tasks/error actually change.
+ *  - `TaskActionsContext` — the mutators. Every function is `useCallback`-stable,
+ *                           so this value is created once and NEVER changes.
+ *                           A component that only dispatches (CreateTask,
+ *                           AdminDashboard, ManageUserTasks) therefore never
+ *                           re-renders because someone else loaded tasks.
+ *
+ * `TaskContext` is kept as the original combined context so existing
+ * `useContext(TaskContext)` call sites keep working unchanged.
+ */
+export const TaskDataContext = createContext({ tasks: [], error: '' });
+export const TaskActionsContext = createContext(null);
 export const TaskContext = createContext();
+
+export const useTaskData = () => useContext(TaskDataContext);
+export const useTaskActions = () => useContext(TaskActionsContext);
 
 export const TaskProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
@@ -33,7 +53,7 @@ export const TaskProvider = ({ children }) => {
     await fetchTasks(false, userId);
   }, [fetchTasks]);
 
-  const createTask = async (taskData) => {
+  const createTask = useCallback(async (taskData) => {
     try {
       const newTask = await taskService.createTask(taskData);
       setTasks((prev) => [...prev, newTask]);
@@ -44,9 +64,9 @@ export const TaskProvider = ({ children }) => {
       toast.error('Failed to create task.');
       throw err;
     }
-  };
+  }, [toast]);
 
-  const updateTask = async (taskId, updatedData) => {
+  const updateTask = useCallback(async (taskId, updatedData) => {
     try {
       const updatedTask = await taskService.updateTask(taskId, updatedData);
       setTasks((prev) => prev.map((task) => (task.id === taskId ? updatedTask : task)));
@@ -57,9 +77,9 @@ export const TaskProvider = ({ children }) => {
       toast.error('Failed to update task.');
       throw err;
     }
-  };
+  }, [toast]);
 
-  const deleteTask = async (taskId) => {
+  const deleteTask = useCallback(async (taskId) => {
     try {
       await taskService.deleteTask(taskId);
       setTasks((prev) => prev.filter((task) => task.id !== taskId));
@@ -69,7 +89,7 @@ export const TaskProvider = ({ children }) => {
       toast.error('Failed to delete task.');
       throw err;
     }
-  };
+  }, [toast]);
 
   const filterTasks = useCallback(async (status, priority) => {
     try {
@@ -94,30 +114,38 @@ export const TaskProvider = ({ children }) => {
   }, [toast]);
 
   useEffect(() => {
+    if (!unsavedChanges) return undefined;
     const handleBeforeUnload = (event) => {
-      if (unsavedChanges) {
-        event.preventDefault();
-        event.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
-      }
+      event.preventDefault();
+      event.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [unsavedChanges]);
 
+  const actions = useMemo(() => ({
+    fetchTasks,
+    fetchUserTasks,
+    createTask,
+    updateTask,
+    deleteTask,
+    filterTasks,
+    searchTasks,
+    setUnsavedChanges,
+  }), [fetchTasks, fetchUserTasks, createTask, updateTask, deleteTask, filterTasks, searchTasks]);
+
+  const data = useMemo(() => ({ tasks, error }), [tasks, error]);
+
+  // Back-compat value for existing `useContext(TaskContext)` call sites.
+  const combined = useMemo(() => ({ ...data, ...actions }), [data, actions]);
+
   return (
-    <TaskContext.Provider value={{
-      tasks,
-      fetchTasks,
-      fetchUserTasks,
-      createTask,
-      updateTask,
-      deleteTask,
-      filterTasks,
-      searchTasks,
-      error,
-      setUnsavedChanges,
-    }}>
-      {children}
-    </TaskContext.Provider>
+    <TaskActionsContext.Provider value={actions}>
+      <TaskDataContext.Provider value={data}>
+        <TaskContext.Provider value={combined}>
+          {children}
+        </TaskContext.Provider>
+      </TaskDataContext.Provider>
+    </TaskActionsContext.Provider>
   );
 };
