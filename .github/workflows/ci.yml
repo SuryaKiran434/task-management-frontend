@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Frontend (Node 20)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # CI=true makes react-scripts run once instead of entering watch mode.
+      - name: Test
+        run: CI=true npm test -- --watchAll=false
+
+      - name: Build
+        run: CI=true npm run build
+
+      # The point of the bundle work was the initial download, so surface it
+      # on every run rather than only when someone thinks to check.
+      - name: Report bundle size
+        run: |
+          echo "### Bundle sizes (gzip)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          for f in build/static/js/*.js; do
+            printf '%8s  %s\n' "$(gzip -c "$f" | wc -c | awk '{printf "%.1f kB", $1/1024}')" "$(basename "$f")"
+          done | sort -rh >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
