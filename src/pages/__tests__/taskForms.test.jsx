@@ -11,7 +11,13 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TaskActionsContext, TaskContext } from '../../contexts/TaskContext';
 
-const navigate = vi.fn();
+// A fresh spy per test, not one shared across the file. Both forms navigate
+// from inside a setTimeout after a successful save (1000ms and 900ms), and that
+// timer outlives the test that scheduled it. A single shared spy would be
+// called by the previous test's timer partway through the next one; because the
+// mock factory reads this binding at call time, each component captures the spy
+// that existed when it rendered, so a late timer can only reach the old one.
+let navigate;
 vi.mock('react-router-dom', () => ({
   useNavigate: () => navigate,
   useParams: () => ({ taskId: '11' }),
@@ -34,7 +40,7 @@ const field = (label) => screen.getByLabelText(new RegExp(label, 'i'));
 // second-line JS validation these tests are about.
 const submitForm = (container) => fireEvent.submit(container.querySelector('form'));
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); navigate = vi.fn(); });
 
 describe('CreateTask', () => {
   const draw = (createTask = vi.fn().mockResolvedValue({})) => {
