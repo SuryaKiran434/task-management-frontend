@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AppProviders, AppRoutes } from './App';
 import { USER } from './testUtils/mockApi';
 
-jest.mock('./utils/axiosInstance', () => require('./testUtils/mockApi'));
+vi.mock('./utils/axiosInstance', async () => await import('./testUtils/mockApi'));
 
 // jsdom has no layout, so recharts' ResponsiveContainer logs width/height
 // warnings on the Dashboard route. Not what these smoke tests are about.

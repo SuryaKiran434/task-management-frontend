@@ -73,7 +73,7 @@ const UserInfo = () => {
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3, mb: 3 }}>
                 <Box sx={{ position: 'relative' }}>
                   <Avatar
-                    src={userInfo.avatarUrl ? `${process.env.REACT_APP_API_BASE_URL?.replace('/api', '') || 'http://localhost:8081'}${userInfo.avatarUrl}` : undefined}
+                    src={userInfo.avatarUrl ? `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8081'}${userInfo.avatarUrl}` : undefined}
                     sx={{ width: 80, height: 80, fontSize: '2rem', bgcolor: 'primary.main' }}
                   >
                     {userInfo.firstName?.[0] || userInfo.email?.[0] || 'U'}

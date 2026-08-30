@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import App from './App';
 import { apiCalls, resetApiCalls } from './testUtils/mockApi';
 
-jest.mock('./utils/axiosInstance', () => require('./testUtils/mockApi'));
+vi.mock('./utils/axiosInstance', async () => await import('./testUtils/mockApi'));
 
 beforeEach(() => {
   localStorage.clear();

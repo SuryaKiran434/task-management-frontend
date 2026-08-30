@@ -3,7 +3,7 @@ import { render, screen, act, waitFor } from '@testing-library/react';
 import { ToastProvider, useToast } from './ToastContext';
 import { TaskProvider, useTaskActions, useTaskData, TaskContext } from './TaskContext';
 
-jest.mock('../utils/axiosInstance', () => require('../testUtils/mockApi'));
+vi.mock('../utils/axiosInstance', async () => await import('../testUtils/mockApi'));
 
 function renderCounter() {
   const counts = { value: 0 };
