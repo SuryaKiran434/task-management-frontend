@@ -18,6 +18,12 @@ export function ToastProvider({ children }) {
   const currentRef = useRef(null);
   currentRef.current = current;
 
+  // A plain counter, not Date.now() + Math.random(). Two toasts raised inside
+  // the same millisecond used to rely on the random part to tell them apart,
+  // which is both a collision the key can lose and the reason a scanner reads
+  // this as a pseudorandom-number finding. An incrementing ref cannot collide.
+  const nextKey = useRef(0);
+
   const showNext = useCallback((next) => {
     currentRef.current = next;
     setCurrent(next);
@@ -25,7 +31,7 @@ export function ToastProvider({ children }) {
   }, []);
 
   const enqueue = useCallback((message, severity = 'info', duration = 3000) => {
-    const item = { message, severity, duration, key: Date.now() + Math.random() };
+    const item = { message, severity, duration, key: nextKey.current++ };
     if (!currentRef.current) showNext(item);
     else setQueue((q) => [...q, item]);
   }, [showNext]);

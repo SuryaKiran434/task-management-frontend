@@ -32,30 +32,28 @@ jobs:
       - name: Install
         run: npm ci
 
-      # CI=true makes react-scripts run once instead of entering watch mode.
-      # Coverage is built into react-scripts, so this needs no extra dependency.
-      # text-summary goes to stdout (test results go to stderr), so teeing
-      # stdout captures the summary alone for the job summary below.
+      # `vitest run` is single-shot; there is no watch mode to opt out of, so
+      # the CI=true this step used to need is gone. Reporters are configured in
+      # vite.config.js. text-summary goes to stdout (results go to stderr), so
+      # teeing stdout captures the summary alone for the job summary below.
       - name: Test
         run: |
           set -o pipefail
-          CI=true npm test -- --watchAll=false --coverage \
-            --coverageReporters=lcov --coverageReporters=text-summary \
-            | tee "$RUNNER_TEMP/coverage-summary.txt"
+          npm run test:coverage | tee "$RUNNER_TEMP/coverage-summary.txt"
 
       # Groundwork for SonarCloud, which reads coverage/lcov.info.
       - name: Coverage summary
         if: always()
         run: |
           {
-            echo "### Coverage (Jest)"
+            echo "### Coverage (Vitest)"
             echo
-            if grep -q 'Coverage summary' "$RUNNER_TEMP/coverage-summary.txt" 2>/dev/null; then
+            if grep -q 'Coverage report' "$RUNNER_TEMP/coverage-summary.txt" 2>/dev/null; then
               grep -E '^Lines +:' "$RUNNER_TEMP/coverage-summary.txt" \
                 | sed -E 's/^Lines +: +([0-9.]+)% \( *([0-9]+)\/([0-9]+) *\)/**\1% of lines** (\2\/\3)/'
               echo
               echo '```'
-              sed -n '/Coverage summary/,$p' "$RUNNER_TEMP/coverage-summary.txt"
+              sed -n '/Coverage report/,$p' "$RUNNER_TEMP/coverage-summary.txt"
               echo '```'
             else
               echo "_No coverage summary was produced._"
@@ -66,7 +64,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: jest-coverage
+          name: vitest-coverage
           path: coverage/lcov.info
           if-no-files-found: error
 
@@ -83,7 +81,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Build
-        run: CI=true npm run build
+        run: npm run build
 
       # The point of the bundle work was the initial download, so surface it
       # on every run rather than only when someone thinks to check.
@@ -91,7 +89,7 @@ jobs:
         run: |
           echo "### Bundle sizes (gzip)" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          for f in build/static/js/*.js; do
+          for f in build/assets/*.js; do
             printf '%8s  %s\n' "$(gzip -c "$f" | wc -c | awk '{printf "%.1f kB", $1/1024}')" "$(basename "$f")"
           done | sort -rh >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"

@@ -1,5 +1,6 @@
-# Use an official Node.js runtime as a parent image
-FROM node:18
+# Node 20, matching CI. The build stage pinned node:18 while CI ran 20,
+# which meant the image was never built on the version the tests passed on.
+FROM node:20
 
 # Set the working directory in the container
 WORKDIR /app

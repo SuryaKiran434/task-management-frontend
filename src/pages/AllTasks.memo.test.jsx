@@ -4,7 +4,7 @@ import { DndContext } from '@dnd-kit/core';
 import { TaskCard, TaskTableRow } from './AllTasks';
 import { UserTaskRow } from '../components/ManageUser';
 
-jest.mock('../utils/axiosInstance', () => require('../testUtils/mockApi'));
+vi.mock('../utils/axiosInstance', async () => await import('../testUtils/mockApi'));
 
 const TASK = {
   id: 11, title: 'Write report', description: 'Q3 numbers',
@@ -21,7 +21,7 @@ const MEMO_TYPE = Symbol.for('react.memo');
  */
 function spyOn(Component) {
   const inner = Component.type;
-  const spy = jest.fn();
+  const spy = vi.fn();
   const Spied = React.memo(function Spied(props) {
     spy();
     return inner(props);

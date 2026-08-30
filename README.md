@@ -1,6 +1,6 @@
 # Task Management Tool — Frontend
 
-React 18 single-page app (Create React App, MUI 6) for the
+React 18 single-page app (Vite 6, MUI 6) for the
 [taskmanagementtool](https://github.com/SuryaKiran434/taskmanagementtool) Spring
 Boot API. Handles JWT login with refresh, role-gated admin screens, task list /
 kanban / detail views, and light–dark theming.
@@ -135,7 +135,7 @@ skeletons.
    (`POST /refresh-token`), and replays the original request exactly once. If
    the refresh fails it clears storage and hard-redirects to `/login`.
 
-The API base URL comes from `REACT_APP_API_BASE_URL`, defaulting to
+The API base URL comes from `VITE_API_BASE_URL`, defaulting to
 `http://localhost:8081/api`. Cross-origin calls need that origin listed in the
 backend's `app.cors.allowed-origins`; `http://localhost:3000` is there already.
 
@@ -184,14 +184,14 @@ cp .env.example .env.local
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `REACT_APP_API_BASE_URL` | `http://localhost:8081/api` | Base URL of the backend API |
+| `VITE_API_BASE_URL` | `http://localhost:8081/api` | Base URL of the backend API |
 
 **It must point at a running backend.** `8081` is the backend's default port
 because its `dev` profile is active out of the box — not `8080`. If you start
 the backend under another profile, or behind a proxy, change this to match.
 
-> ⚠️ **Never put a secret in a `REACT_APP_*` variable.** Create React App
-> inlines every `REACT_APP_*` value into the JavaScript bundle at build time.
+> ⚠️ **Never put a secret in a `VITE_*` variable.** Vite inlines every `VITE_*`
+> value into the JavaScript bundle at build time.
 > Whatever you put there is shipped to the browser in plain text and readable by
 > anyone who opens devtools or curls the bundle. API keys, client secrets and
 > tokens belong on the server, behind an endpoint this app calls — never in
@@ -201,21 +201,25 @@ the backend under another profile, or behind a proxy, change this to match.
 ### 3. Start
 
 ```bash
-npm start
+npm run dev
 ```
 
-Serves on **http://localhost:3000** with hot reload. That origin is already in
+Serves on **http://localhost:3000** with hot module replacement. The port is set
+explicitly in `vite.config.js`: Vite defaults to 5173, and the backend's CORS
+allow-list names 3000. That origin is already in
 the backend's allowed CORS origins.
 
 ### 4. Test
 
 ```bash
-CI=true npm test
+npm test                 # single run
+npm run test:watch       # watch mode
+npm run test:coverage    # plus coverage/lcov.info for SonarCloud
 ```
 
-`CI=true` makes `react-scripts` run the suite once and exit instead of dropping
-into interactive watch mode. Without it the command never returns, which is why
-CI sets it. **33 tests across 4 suites**, all passing.
+`npm test` runs `vitest run`, which is single-shot — there is no watch mode to
+opt out of, so the `CI=true` this used to need is gone. **33 tests across 4
+suites**, all passing.
 
 ### 5. Build
 
@@ -223,16 +227,19 @@ CI sets it. **33 tests across 4 suites**, all passing.
 npm run build
 ```
 
-Emits a hashed, minified production bundle to `build/`. Serve it with any static
-file server; there is also a `Dockerfile` that builds and serves it behind nginx
-on port 80 (note it still pins `node:18` in the build stage while CI and this
-README target Node 20).
+Emits a hashed, minified production bundle to `build/` — the output directory is
+set in `vite.config.js` rather than being Vite's default `dist/`, so the
+Dockerfile, the CI bundle-size step and any deploy script keep working. Serve it
+with any static file server; the `Dockerfile` builds it and serves it behind
+nginx on port 80.
 
 ## Environment Variables
 
-Only `REACT_APP_*` variables reach the app — CRA ignores everything else. They
-are read at **build** time, not run time, so changing one means restarting
-`npm start` or rebuilding.
+Only `VITE_*` variables reach the app — Vite refuses to expose anything else,
+which is what keeps the rest of the shell environment out of the bundle. They are
+read at **build** time, not run time, so changing one means restarting the dev
+server or rebuilding. In code they are read from `import.meta.env`, not
+`process.env`.
 
 | File | Committed | Use |
 | --- | --- | --- |
@@ -245,15 +252,15 @@ up in the shipped bundle.
 
 ## Testing
 
-Jest + React Testing Library via `react-scripts`, with `testUtils/mockApi.js`
-standing in for `axiosInstance` so nothing hits the network.
+Vitest + React Testing Library, with `testUtils/mockApi.js` standing in for
+`axiosInstance` so nothing hits the network.
 
 | Suite | Covers |
 | --- | --- |
-| `src/routes.lazy.test.js` | every one of the 16 routes resolves its lazy chunk and renders — public routes anonymously, private routes behind a hydrated session — plus the unauthenticated and non-admin redirects |
-| `src/pages/AllTasks.memo.test.js` | `TaskCard`, `TaskTableRow` and `UserTaskRow` are wrapped in `React.memo`, do not re-render on an unrelated parent render, do re-render when their own props change, and are defeated by an unstable callback prop (which is why the handlers are `useCallback`-stabilised) |
-| `src/contexts/contexts.test.js` | `TaskActionsContext` keeps a stable identity while task data changes, the combined `TaskContext` still exposes the original API, and the toast API does not churn |
-| `src/App.test.js` | the landing page renders for an anonymous visitor, and no user-list request is made before login |
+| `src/routes.lazy.test.jsx` | every one of the 16 routes resolves its lazy chunk and renders — public routes anonymously, private routes behind a hydrated session — plus the unauthenticated and non-admin redirects |
+| `src/pages/AllTasks.memo.test.jsx` | `TaskCard`, `TaskTableRow` and `UserTaskRow` are wrapped in `React.memo`, do not re-render on an unrelated parent render, do re-render when their own props change, and are defeated by an unstable callback prop (which is why the handlers are `useCallback`-stabilised) |
+| `src/contexts/contexts.test.jsx` | `TaskActionsContext` keeps a stable identity while task data changes, the combined `TaskContext` still exposes the original API, and the toast API does not churn |
+| `src/App.test.jsx` | the landing page renders for an anonymous visitor, and no user-list request is made before login |
 
 CI (`.github/workflows/ci.yml`, job **Frontend (Node 20)** — a required check on
 `main`) runs `npm ci`, the tests, `npm run build`, and prints per-chunk gzip
