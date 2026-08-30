@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router';
 import { Typography, Button, IconButton, Alert, Link, Stack, Box } from '@mui/material';
 import { Eye, EyeOff } from 'lucide-react';
 import { AuthContext } from '../../contexts/AuthContext';

@@ -9,7 +9,7 @@
  */
 
 import { render, screen, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { AuthContext } from '../../contexts/AuthContext';
 
 vi.mock('../../utils/axiosInstance', async () => await import('../../testUtils/mockApi'));

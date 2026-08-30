@@ -1,6 +1,6 @@
 // src/components/DropdownMenu.js
 import React, { useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { AuthContext } from '../contexts/AuthContext';
 
 function DropdownMenu() {

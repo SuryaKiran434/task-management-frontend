@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import {
   Box, Grid, Card, CardContent, Typography, Button, Skeleton,
   LinearProgress, Chip, Stack, Paper, useTheme,

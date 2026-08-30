@@ -1,5 +1,5 @@
 import React, { useEffect, useContext, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import {
   Box, Typography, Grid, Card, CardContent, Button, Chip,
   Stack, Paper, Avatar, IconButton, Tooltip, Dialog,

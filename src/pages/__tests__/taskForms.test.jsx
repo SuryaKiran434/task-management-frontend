@@ -18,7 +18,7 @@ import { TaskActionsContext, TaskContext } from '../../contexts/TaskContext';
 // mock factory reads this binding at call time, each component captures the spy
 // that existed when it rendered, so a late timer can only reach the old one.
 let navigate;
-vi.mock('react-router-dom', () => ({
+vi.mock('react-router', () => ({
   useNavigate: () => navigate,
   useParams: () => ({ taskId: '11' }),
 }));

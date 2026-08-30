@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { AppProviders, AppRoutes } from './App';
 import { USER } from './testUtils/mockApi';
 
@@ -15,7 +15,10 @@ afterAll(() => { console.warn = originalWarn; });
 function renderAt(path) {
   return render(
     <AppProviders>
-      <MemoryRouter initialEntries={[path]}>
+      {/* useTransitions={false} mirrors App.jsx, so these lazy/Suspense
+          smoke tests exercise the transition semantics production actually
+          runs under rather than react-router v7's default. */}
+      <MemoryRouter initialEntries={[path]} useTransitions={false}>
         <AppRoutes />
       </MemoryRouter>
     </AppProviders>

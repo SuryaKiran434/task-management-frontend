@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router';
 import {
   Box, Card, CardContent, Typography, TextField, Button,
   Stack, Alert, Snackbar, Divider,
