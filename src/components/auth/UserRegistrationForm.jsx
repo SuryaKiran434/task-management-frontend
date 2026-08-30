@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router';
 import { Box, Typography, Button, IconButton, Alert, Link, Stack } from '@mui/material';
 import { Eye, EyeOff } from 'lucide-react';
 import userService from '../../services/userService';

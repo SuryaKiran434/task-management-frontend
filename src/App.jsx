@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useContext } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router';
 import { Box, LinearProgress, Skeleton, Card, CardContent } from '@mui/material';
 import { AuthProvider, AuthContext } from './contexts/AuthContext';
 import { TaskProvider } from './contexts/TaskContext';
@@ -147,7 +147,18 @@ export function AppProviders({ children }) {
 export default function App() {
   return (
     <AppProviders>
-      <Router>
+      {/*
+        react-router v7 wraps every location update in React.startTransition by
+        default. React deliberately does not show a Suspense fallback for a
+        transition -- it keeps the current screen up until the new one is ready
+        -- and since every route below is React.lazy, that silently retires the
+        PageFallback and RouteFallback skeletons on client-side navigation:
+        clicking a nav item would leave the old page on screen with no feedback
+        until its chunk arrived. Declarative mode has no useNavigation() to
+        build a pending indicator from, so opting out keeps the v6 behaviour the
+        fallbacks were written for. Revisit if we ever move to a data router.
+      */}
+      <Router useTransitions={false}>
         <AppRoutes />
       </Router>
     </AppProviders>

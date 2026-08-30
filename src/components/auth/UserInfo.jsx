@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router';
 import {
   Box, Card, CardContent, Typography, Avatar, Button, Stack,
   Skeleton, Alert, Divider, Chip, Tooltip, IconButton,

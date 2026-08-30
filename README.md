@@ -40,7 +40,7 @@ kanban / detail views, and light–dark theming.
    └── App.js
         ├── AppProviders  ThemeProvider ▸ ToastProvider ▸ AuthProvider
         │                 ▸ UserProvider ▸ TaskProvider
-        └── AppRoutes     react-router-dom v6, Suspense boundaries
+        └── AppRoutes     react-router v7, Suspense boundaries
                 │
                 ▼
    ┌──────────────────────────────────────────────────────────────┐
