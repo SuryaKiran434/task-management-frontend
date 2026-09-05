@@ -36,8 +36,8 @@ kanban / detail views, and light–dark theming.
 ### Layering
 
 ```
- index.js
-   └── App.js
+ index.jsx
+   └── App.jsx
         ├── AppProviders  ThemeProvider ▸ ToastProvider ▸ AuthProvider
         │                 ▸ UserProvider ▸ TaskProvider
         └── AppRoutes     react-router v7, Suspense boundaries
@@ -49,9 +49,11 @@ kanban / detail views, and light–dark theming.
    ├──────────────────────────────────────────────────────────────┤
    │ components/    everything reusable or route-adjacent         │
    │   layout/      AppLayout (sidebar + app bar), ErrorBoundary  │
-   │   auth/        Login, AdminLogin, UserRegistrationForm,      │
-   │                ResetPassword, UserInfo, EditUserInfo,        │
-   │                LogoutButton, AuthInput                       │
+   │   auth/        AuthLayout (shared shell for the four       │
+   │                unauthenticated screens), Login, AdminLogin,  │
+   │                UserRegistrationForm, ResetPassword,          │
+   │                UserInfo, EditUserInfo, LogoutButton,         │
+   │                AuthInput                                     │
    │   Dashboard/   Dashboard, AdminDashboard, CreateUserDialog   │
    │   Tasks/       TaskDetailDrawer, TaskFilters                 │
    │   notifications/ NotificationBell                            │
@@ -109,7 +111,7 @@ chunk behind a `Suspense` boundary.
 | `/manage-user/:userId` | `ManageUser` | lazy | **admin** |
 | `*` | `NotFound` | lazy | public |
 
-`PrivateRoute` (defined in `App.js`) does the gating: no session → redirect to
+`PrivateRoute` (defined in `App.jsx`) does the gating: no session → redirect to
 `/login`; a session without `ROLE_ADMIN` on an admin route → redirect to
 `/dashboard`. Otherwise it renders the page inside two nested `Suspense`
 boundaries — an outer one for the `AppLayout` chunk showing a `LinearProgress`,
@@ -218,8 +220,8 @@ npm run test:coverage    # plus coverage/lcov.info for SonarCloud
 ```
 
 `npm test` runs `vitest run`, which is single-shot — there is no watch mode to
-opt out of, so the `CI=true` this used to need is gone. **33 tests across 4
-suites**, all passing.
+opt out of, so the `CI=true` this used to need is gone. **160 tests across 13
+files**, all passing.
 
 ### 5. Build
 
@@ -255,18 +257,44 @@ up in the shipped bundle.
 Vitest + React Testing Library, with `testUtils/mockApi.js` standing in for
 `axiosInstance` so nothing hits the network.
 
-| Suite | Covers |
-| --- | --- |
-| `src/routes.lazy.test.jsx` | every one of the 16 routes resolves its lazy chunk and renders — public routes anonymously, private routes behind a hydrated session — plus the unauthenticated and non-admin redirects |
-| `src/pages/AllTasks.memo.test.jsx` | `TaskCard`, `TaskTableRow` and `UserTaskRow` are wrapped in `React.memo`, do not re-render on an unrelated parent render, do re-render when their own props change, and are defeated by an unstable callback prop (which is why the handlers are `useCallback`-stabilised) |
-| `src/contexts/contexts.test.jsx` | `TaskActionsContext` keeps a stable identity while task data changes, the combined `TaskContext` still exposes the original API, and the toast API does not churn |
-| `src/App.test.jsx` | the landing page renders for an anonymous visitor, and no user-list request is made before login |
+`npm test` — **160 tests across 13 files**:
 
-CI (`.github/workflows/ci.yml`, job **Frontend (Node 20)** — a required check on
-`main`) runs `npm ci`, the tests, `npm run build`, and prints per-chunk gzip
-sizes to the job summary so bundle regressions are visible on every run.
+| Suite | Tests | Covers |
+| --- | ---: | --- |
+| `src/services/__tests__/taskService.test.js` | 27 | every task call's path, params and unwrapping — reads, filter, bulk, CSV blob |
+| `src/routes.lazy.test.jsx` | 19 | every one of the 16 routes resolves its lazy chunk and renders — public routes anonymously, private routes behind a hydrated session — plus the unauthenticated and non-admin redirects |
+| `src/services/__tests__/userService.test.js` | 19 | user and role endpoint paths, including that `getUserTasksById` reads the task-side path |
+| `src/services/__tests__/authService.test.js` | 15 | login/refresh token storage, claim extraction, and error-message fallbacks |
+| `src/contexts/__tests__/TaskContext.test.jsx` | 14 | `fetchTasks` admin-vs-user scoping, its retry/report behaviour, and that each mutation updates the local list |
+| `src/pages/__tests__/taskForms.test.jsx` | 14 | `CreateTask` / `EditTasks` field validation, error clearing, submit and failure paths |
+| `src/components/auth/authPages.test.jsx` | 13 | `AuthLayout` and the four unauthenticated screens it wraps |
+| `src/contexts/__tests__/AuthContext.test.jsx` | 11 | mount-time session restore, refresh of an expired token, and every path that ends logged out |
+| `src/pages/AllTasks.memo.test.jsx` | 9 | `TaskCard`, `TaskTableRow` and `UserTaskRow` are wrapped in `React.memo`, do not re-render on an unrelated parent render, do re-render when their own props change, and are defeated by an unstable callback prop (which is why the handlers are `useCallback`-stabilised) |
+| `src/utils/__tests__/axiosInstance.test.js` | 7 | the bearer-token request interceptor and the refresh-once-and-replay 401 handling |
+| `src/utils/__tests__/dates.test.js` | 7 | `parseDate` / `formatDate` around date-only strings and absent values |
+| `src/contexts/contexts.test.jsx` | 3 | `TaskActionsContext` keeps a stable identity while task data changes, the combined `TaskContext` still exposes the original API, and the toast API does not churn |
+| `src/App.test.jsx` | 2 | the landing page renders for an anonymous visitor, and no user-list request is made before login |
+
+### CI
+
+`.github/workflows/ci.yml`, job **Frontend (Node 20)** — a required check on
+`main`. It runs `npm ci`, then `npm run test:coverage`, posts the coverage
+summary to the job summary and uploads `coverage/lcov.info`, runs the SonarCloud
+scanner (`continue-on-error`, so an outage cannot fail the required check),
+builds, and prints per-chunk gzip sizes so bundle regressions are visible on
+every run.
+
+Two other workflows sit alongside it:
+
+| Workflow | Trigger | Does |
+| --- | --- | --- |
+| `dependabot-auto-merge.yml` | `pull_request` from `dependabot[bot]` | queues auto-merge for patch/minor updates, so they land once the required check passes; majors are left for a human |
+| `slack-notify.yml` | push to any branch | posts commit metadata to a Slack webhook |
+
 Dependency updates arrive weekly through Dependabot
-(`.github/dependabot.yml`).
+(`.github/dependabot.yml`), **grouped into one PR per ecosystem** (npm and
+github-actions) covering that week's minor and patch bumps. Library majors are
+ignored; action majors are not, because GitHub retires old action runtimes.
 
 ## Performance
 
@@ -275,21 +303,22 @@ Dependency updates arrive weekly through Dependabot
   authenticated shell — sidebar, app bar, notification bell, and the MUI surface
   they drag in — is only ever rendered behind a login, so it has no business
   being in the download an anonymous visitor pays for. The initial `main.js`
-  dropped **~19% gzip**; the current build is **134 kB gzip** for `main.js`
-  across 30 emitted chunks.
+  dropped **~19% gzip**. The current build emits **43 chunks**, with a
+  **143 kB gzip** entry chunk (`build/assets/index-*.js` — Vite names the entry
+  after `index.html`, not `main.js`).
 - **Memoised list rows.** `TaskCard`, `TaskTableRow`, `TableView`,
   `KanbanColumn`, `UserTaskRow` and the `DueDateBadge`s are `React.memo`-wrapped,
   and every handler passed down to them is `useCallback`-stabilised — a fresh
   arrow function on each parent render defeats `memo` entirely, which
-  `AllTasks.memo.test.js` asserts explicitly. Selecting one row in a long list
+  `AllTasks.memo.test.jsx` asserts explicitly. Selecting one row in a long list
   no longer re-renders the others.
 - **Split task context.** See [TaskContext split](#taskcontext-split) — dispatch-only
   screens stop re-rendering when task data loads.
 - **Fixed refetch loop.** An effect dependency that changed identity on every
   render was refetching in a loop; stabilising the actions context ended it.
 
-The test suite went from **1 failing test to 33 passing across 4 suites**
-alongside this work.
+The test suite went from **1 failing test to 160 passing across 13 files**
+over this work and the rounds that followed it.
 
 ## Known Cruft
 
@@ -308,6 +337,7 @@ Worth clearing out; noted here rather than silently carried:
   being the component library.)
 - **`src/services/labelService.js`** has no callers, even though the backend
   exposes the label endpoints and tasks can carry labels.
-- **`src/components/auth/PrivateRoute.js`** is orphaned — `App.js` defines its
-  own `PrivateRoute` and nothing imports the file.
-- **`Dockerfile`** builds on `node:18` while CI and this README target Node 20.
+- **`src/components/auth/PrivateRoute.jsx`** is orphaned — `App.jsx` defines
+  its own `PrivateRoute` and nothing imports the file.
+(The `Dockerfile` used to build on `node:18` while CI ran 20; it is on
+`node:20` now.)
